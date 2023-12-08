@@ -9,7 +9,7 @@ import argparse
 import subprocess
 
 
-def run_colmap(basedir, match_type):
+def run_colmap(basedir, match_type, masks_path):
     logfile_name = os.path.join(basedir, 'colmap_output.txt')
     logfile = open(logfile_name, 'w')
     
@@ -19,6 +19,8 @@ def run_colmap(basedir, match_type):
             '--image_path', os.path.join(basedir, 'images'),
             '--ImageReader.single_camera', '1'
     ]
+    if masks_path is not None:
+        feature_extractor_args += ['--ImageReader.mask_path', f'{masks_path}']
     feat_output = ( subprocess.check_output(feature_extractor_args, universal_newlines=True) )
     logfile.write(feat_output)
     print('Features extracted')
@@ -55,7 +57,7 @@ def run_colmap(basedir, match_type):
     print( 'Finished running COLMAP, see {} for logs'.format(logfile_name) )
 
     
-def gen_poses(basedir, match_type):
+def gen_poses(basedir, match_type, masks_path):
     files_needed = ['{}.bin'.format(f) for f in ['cameras', 'images', 'points3D']]
     if os.path.exists(os.path.join(basedir, 'sparse/0')):
         files_had = os.listdir(os.path.join(basedir, 'sparse/0'))
@@ -63,7 +65,7 @@ def gen_poses(basedir, match_type):
         files_had = []
     if not all([f in files_had for f in files_needed]):
         print( 'Need to run COLMAP' )
-        run_colmap(basedir, match_type)
+        run_colmap(basedir, match_type, masks_path)
     else:
         print('Don\'t need to run COLMAP')
     
@@ -75,6 +77,7 @@ if __name__=='__main__':
     parser.add_argument('--match_type', type=str, 
                         default='exhaustive_matcher', help='type of matcher used.  Valid options: \
                         exhaustive_matcher sequential_matcher.  Other matchers not supported at this time')
+    parser.add_argument("--masks-path", help="[Optional] input path to the image masks")
     parser.add_argument('scenedir', type=str,
                         help='input scene directory')
     args = parser.parse_args()
@@ -82,4 +85,4 @@ if __name__=='__main__':
     if args.match_type != 'exhaustive_matcher' and args.match_type != 'sequential_matcher':
         print('ERROR: matcher type ' + args.match_type + ' is not valid.  Aborting')
         sys.exit()    
-    gen_poses(args.scenedir, args.match_type)
+    gen_poses(args.scenedir, args.match_type, args.masks_path)
